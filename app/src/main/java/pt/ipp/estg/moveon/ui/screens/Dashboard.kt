@@ -8,12 +8,16 @@ import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -43,12 +48,30 @@ fun Dashboard(onLogout: () -> Unit) {
     val scope = rememberCoroutineScope()
     val db = remember { AppDatabase.getDatabase(context) }
 
+
     // Estado da gravação
     var isRecording by remember { mutableStateOf(false) }
+    var selectedActivityType by remember { mutableStateOf("Caminhada") }
     var currentActivityId by remember { mutableStateOf(-1L) }
 
-    // --- LEITURA EM TEMPO REAL DA BD ---
-    // Se tivermos um ID válido, observa os pontos. Se não, lista vazia.
+    // Sensor acelerómetro
+    var movementIntensity by remember { mutableFloatStateOf(0f) }
+
+    AccelerometerMonitor { newIntensity ->
+        movementIntensity = newIntensity
+    }
+    // Sensor de Podómetro
+    var currentSystemSteps by remember { mutableFloatStateOf(0f) }
+    var startSystemSteps by remember { mutableFloatStateOf(0f) }
+
+    StepCounterMonitor { total ->
+        currentSystemSteps = total
+    }
+
+    // Calcular passos da sessão atual
+    val sessionSteps = if (isRecording) (currentSystemSteps - startSystemSteps).toInt() else 0
+
+
     val pointsList by db.activityDao().getActivityPoints(currentActivityId)
         .collectAsState(initial = emptyList())
 
@@ -83,7 +106,9 @@ fun Dashboard(onLogout: () -> Unit) {
         val fine = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
         val coarse = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
         if (fine || coarse) {
-            startRecording(context, scope, db) { newId ->
+            startSystemSteps = currentSystemSteps
+
+            startRecording(context, scope, db, selectedActivityType) { newId ->
                 currentActivityId = newId
                 isRecording = true
             }
@@ -94,66 +119,136 @@ fun Dashboard(onLogout: () -> Unit) {
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    if (isRecording) {
-                        // --- AQUI ESTÁ A LÓGICA DE PARAR COM METEOROLOGIA ---
-                        scope.launch {
-                            // 1. Tenta obter a última localização
-                            val lastPoint = pathPoints.lastOrNull()
-                            var temp: Double? = null
-                            var desc: String? = null
+            androidx.compose.foundation.layout.Column(
+                horizontalAlignment = androidx.compose.ui.Alignment.End
+            ) {
+
+                if (isRecording) {
+                    androidx.compose.material3.Card(
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        androidx.compose.foundation.layout.Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            // Podes usar Icons.Default.DirectionsWalk se tiveres, ou outro
+                            Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
+                            androidx.compose.material3.Text(
+                                text = "$sessionSteps Passos",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                androidx.compose.material3.Card(
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    androidx.compose.foundation.layout.Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Speed, contentDescription = null)
+                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
+                        androidx.compose.foundation.layout.Column {
+                            androidx.compose.material3.Text(
+                                text = "".format(movementIntensity),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                            val status = when {
+                                movementIntensity < 1.0f -> "Parado"
+                                movementIntensity < 4.0f -> "A caminhar"
+                                else -> "A correr!"
+                            }
+                            androidx.compose.material3.Text(
+                                text = status,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                color = if (movementIntensity > 4) Color.Red else Color.Unspecified
+                            )
+                        }
+                    }
+                }
+
+                if (!isRecording) {
+                    ActivitySelector(
+                        selectedActivity = selectedActivityType,
+                        onActivitySelected = { selectedActivityType = it }
+                    )
+                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                FloatingActionButton(
+                    onClick = {
+                        if (isRecording) {
+                            scope.launch {
+                                // Obter localização
+                                val lastPoint = pathPoints.lastOrNull()
+                                var temp: Double? = null
+                                var desc: String? = null
 
 
-                            if (lastPoint != null) {
-                                try {
-                                    val response = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                        pt.ipp.estg.moveon.data.remote.RetrofitClient.weatherService.getCurrentWeather(
-                                            lat = lastPoint.latitude,
-                                            lon = lastPoint.longitude,
-                                        )
+                                if (lastPoint != null) {
+                                    try {
+                                        val response = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                            pt.ipp.estg.moveon.data.remote.RetrofitClient.weatherService.getCurrentWeather(
+                                                lat = lastPoint.latitude,
+                                                lon = lastPoint.longitude,
+                                            )
+                                        }
+                                        temp = response.main.temp
+                                        desc = response.weather.firstOrNull()?.description
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+
                                     }
-                                    temp = response.main.temp
-                                    desc = response.weather.firstOrNull()?.description
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                    // Se falhar, continua na mesma (grava sem tempo)
                                 }
+
+                                // Guarda na base de dados
+                                val endTime = System.currentTimeMillis()
+                                db.activityDao().updateActivityStats(
+                                    id = currentActivityId,
+                                    distance = totalDistance,
+                                    end = endTime,
+                                    temp = temp,
+                                    desc = desc
+                                )
+
+
+                                stopRecording(context)
+                                isRecording = false
+                                currentActivityId = -1L
+                                Toast.makeText(context, "Atividade guardada!", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+
+                            val permissionsToRequest = mutableListOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            )
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                permissionsToRequest.add(Manifest.permission.ACTIVITY_RECOGNITION)
                             }
 
-                            // 3. Grava tudo na BD
-                            val endTime = System.currentTimeMillis()
-                            db.activityDao().updateActivityStats(
-                                id = currentActivityId,
-                                distance = totalDistance,
-                                end = endTime,
-                                temp = temp,
-                                desc = desc
-                            )
+                            permissionLauncher.launch(permissionsToRequest.toTypedArray())
 
-                            // 4. Pára o serviço e limpa o ecrã
-                            stopRecording(context)
-                            isRecording = false
-                            currentActivityId = -1L
-                            Toast.makeText(context, "Atividade guardada!", Toast.LENGTH_SHORT).show()
                         }
-                    } else {
-                        // --- LÓGICA DE INICIAR (Permissões) ---
-                        permissionLauncher.launch(arrayOf(
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION,
-                            Manifest.permission.POST_NOTIFICATIONS
-                        ))
-                    }
-                },
-                // Muda a cor: Vermelho se a gravar, Azul (Primary) se parado
-                containerColor = if (isRecording) Color.Red else androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer
-            ) {
-                // Muda o ícone: X se a gravar, + se parado
-                Icon(
-                    if (isRecording) Icons.Default.Close else Icons.Default.Add,
-                    contentDescription = if (isRecording) "Parar" else "Iniciar"
-                )
+
+                    },
+                    containerColor = if (isRecording) Color.Red else MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Icon(
+                        if (isRecording) Icons.Default.Close else Icons.Default.Add,
+                        contentDescription = null
+                    )
+                }
             }
         }
     ) { paddingValues ->
@@ -161,7 +256,7 @@ fun Dashboard(onLogout: () -> Unit) {
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
-                properties = MapProperties(isMyLocationEnabled = isRecording) // Mostra o ponto azul se estiver a gravar
+                properties = MapProperties(isMyLocationEnabled = isRecording)
             ) {
                 // Desenhar a linha vermelha do percurso
                 if (pathPoints.isNotEmpty()) {
@@ -171,14 +266,14 @@ fun Dashboard(onLogout: () -> Unit) {
                         width = 15f
                     )
 
-                    // Marcador de Início
+
                     Marker(
                         state = MarkerState(position = pathPoints.first()),
                         title = "Início",
                         snippet = "Começaste aqui"
                     )
                 } else if (!isRecording) {
-                    // Só mostra marcador da ESTG se não estiver a gravar nada
+
                     Marker(
                         state = MarkerState(position = estgLocation),
                         title = "ESTG",
@@ -190,16 +285,17 @@ fun Dashboard(onLogout: () -> Unit) {
     }
 }
 
-// Funções auxiliares atualizadas
+
 fun startRecording(
     context: Context,
     scope: CoroutineScope,
     db: AppDatabase,
-    onSuccess: (Long) -> Unit // Agora devolve o ID
+    activityType: String,
+    onSuccess: (Long) -> Unit
 ) {
     scope.launch {
         val newActivity = ActivityEntity(
-            activityType = "Caminhada",
+            activityType = activityType,
             startTime = System.currentTimeMillis(),
             isPublic = false
         )
@@ -216,8 +312,8 @@ fun startRecording(
             context.startService(intent)
         }
 
-        onSuccess(id) // Passa o ID de volta para o ecrã
-        Toast.makeText(context, "A gravar percurso...", Toast.LENGTH_SHORT).show()
+        onSuccess(id)
+        Toast.makeText(context, "A gravar $activityType...", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -245,4 +341,112 @@ fun calculateDistance(points: List<LatLng>): Float {
         totalDistance += result[0]
     }
     return totalDistance
+}
+
+
+@Composable
+fun ActivitySelector(
+    selectedActivity: String,
+    onActivitySelected: (String) -> Unit
+) {
+    val activities = listOf("Caminhada", "Corrida", "Ciclismo")
+
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier
+            .padding(bottom = 16.dp)
+            .background(
+                color = MaterialTheme.colorScheme.surface,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+            )
+            .padding(4.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+    ) {
+        activities.forEach { type ->
+            val isSelected = selectedActivity == type
+            androidx.compose.material3.Button(
+                onClick = { onActivitySelected(type) },
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    contentColor = if (isSelected) Color.White else Color.Gray
+                ),
+                elevation = null,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+            ) {
+                androidx.compose.material3.Text(type)
+            }
+        }
+    }
+}
+
+// --- NOVA FUNÇÃO PARA O ACELERÓMETRO ---
+@Composable
+fun AccelerometerMonitor(onIntensityChanged: (Float) -> Unit) {
+    val context = LocalContext.current
+    val sensorManager = remember {
+        context.getSystemService(Context.SENSOR_SERVICE) as android.hardware.SensorManager
+    }
+    val accelerometer = remember {
+        sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
+    }
+
+    DisposableEffect(Unit) {
+        val listener = object : android.hardware.SensorEventListener {
+            override fun onSensorChanged(event: android.hardware.SensorEvent?) {
+                event?.let {
+                    val x = it.values[0]
+                    val y = it.values[1]
+                    val z = it.values[2]
+
+                    // Calcular a magnitude total do movimento
+                    val magnitude = kotlin.math.sqrt((x * x + y * y + z * z).toDouble()).toFloat()
+
+                    // Subtrair a gravidade (~9.8) para ter apenas o movimento do utilizador
+                    val delta = kotlin.math.abs(magnitude - 9.8f)
+
+                    onIntensityChanged(delta)
+                }
+            }
+            override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
+        }
+
+        // Registar o sensor
+        sensorManager.registerListener(listener, accelerometer, android.hardware.SensorManager.SENSOR_DELAY_UI)
+
+        // Limpar quando sair do ecrã
+        onDispose {
+            sensorManager.unregisterListener(listener)
+        }
+    }
+}
+
+@Composable
+fun StepCounterMonitor(onStepCountChanged: (Float) -> Unit) {
+    val context = LocalContext.current
+    val sensorManager = remember {
+        context.getSystemService(Context.SENSOR_SERVICE) as android.hardware.SensorManager
+    }
+    val stepCounter = remember {
+        sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_COUNTER)
+    }
+
+    DisposableEffect(Unit) {
+        val listener = object : android.hardware.SensorEventListener {
+            override fun onSensorChanged(event: android.hardware.SensorEvent?) {
+                event?.let {
+                    // O sensor devolve o total de passos
+                    val totalSteps = it.values[0]
+                    onStepCountChanged(totalSteps)
+                }
+            }
+            override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
+        }
+
+        if (stepCounter != null) {
+            sensorManager.registerListener(listener, stepCounter, android.hardware.SensorManager.SENSOR_DELAY_UI)
+        }
+
+        onDispose {
+            sensorManager.unregisterListener(listener)
+        }
+    }
 }
