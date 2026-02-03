@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 
     id("com.google.devtools.ksp")
+    id("com.google.gms.google-services")
 
 }
 
@@ -54,6 +55,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
+    implementation(libs.play.services.maps)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -62,13 +64,31 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation("androidx.navigation:navigation-compose:2.8.5")
 
+    //maps
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation("com.google.maps.android:maps-compose:4.3.0")
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+
+    //room
     val room_version = "2.6.0"
     implementation("androidx.room:room-runtime:$room_version")
     implementation("androidx.room:room-ktx:$room_version")
     annotationProcessor("androidx.room:room-compiler:$room_version")
     ksp("androidx.room:room-compiler:$room_version")
+
+    //firebase
+    implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-analytics")
+
+    //icons
+    implementation("androidx.compose.material:material-icons-extended")
+
+    //retrofit
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
 }
 

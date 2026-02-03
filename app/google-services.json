@@ -12,15 +12,25 @@
           "package_name": "pt.ipp.estg.moveon"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "867355852620-b2is9oaom35854vu52svm4r5rt7q4db7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "API_KEY"
+          "current_key": "AIzaSyClvWC5cO5Sr1B-ZqcZoggULO76T9koj64"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "867355852620-b2is9oaom35854vu52svm4r5rt7q4db7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

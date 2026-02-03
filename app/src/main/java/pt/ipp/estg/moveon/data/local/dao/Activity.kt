@@ -23,8 +23,8 @@ interface ActivityDao {
     suspend fun insertActivity(activity: ActivityEntity): Long
 
     // Atualizar corrida (ex: quando terminas e gravas a distancia final)
-    @Update
-    suspend fun updateActivity(activity: ActivityEntity)
+    @Query("UPDATE activity_table SET distanceMeters = :distance, endTime = :end, temperature = :temp, weatherDescription = :desc WHERE activityId = :id")
+    suspend fun updateActivityStats(id: Long, distance: Float, end: Long, temp: Double?, desc: String?)
 
     // Inserir um ponto de GPS (usado pelo Serviço em background)
     @Insert
@@ -42,4 +42,7 @@ interface ActivityDao {
     // Obter estatísticas totais para Leaderboard local
     @Query("SELECT SUM(distanceMeters) FROM activity_table")
     fun getTotalDistance(): Flow<Float?>
+
+    @Query("SELECT * FROM location_points WHERE activityOwnerId = :activityId ORDER BY timestamp ASC")
+    fun getActivityPoints(activityId: Long): Flow<List<LocationPointEntity>>
 }

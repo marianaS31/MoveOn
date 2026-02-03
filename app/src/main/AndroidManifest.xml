@@ -26,6 +26,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MoveOn">
+
+
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -42,6 +45,9 @@
             android:name=".service.LocationService"
             android:foregroundServiceType="location"
             android:exported="false" />
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
 
     </application>
 
