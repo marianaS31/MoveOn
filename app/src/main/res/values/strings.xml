@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">MoveOn</string>
+    <string name="dashboard_title">Dashboard</string>
+    <string name="history_title">Histórico</string>
+    <string name="ranking_title">Classificação</string>
+    <string name="start_recording">Gravar</string>
+    <string name="stop_recording">Parar</string>
+    <string name="walk">Caminhada</string>
+    <string name="run">Corrida</string>
+    <string name="bike">Ciclismo</string>
+    <string name="details_title">Detalhes da Atividade</string>
+    <string name="distance_label">Distância</string>
+    <string name="duration_label">Duração</string>
+    <string name="speed_label">Velocidade</string>
 </resources>
