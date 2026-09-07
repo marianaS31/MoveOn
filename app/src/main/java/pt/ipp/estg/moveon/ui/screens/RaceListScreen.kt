@@ -8,8 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -19,24 +19,20 @@ import pt.ipp.estg.moveon.ui.viewmodel.RaceViewModel
 @Composable
 fun RaceListScreen(
     onCreateRace: () -> Unit,
-    onRaceClick: (Long) -> Unit,
+    onRaceClick: (String) -> Unit,
     raceViewModel: RaceViewModel = viewModel()
 ) {
-
-    val races by raceViewModel.races.collectAsState()
+    val races by raceViewModel.races.observeAsState(initial = emptyList())
+    val isLoading by raceViewModel.isLoading.observeAsState(initial = false)
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text("Provas")
-                }
+                title = { Text("Provas") }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onCreateRace
-            ) {
+            FloatingActionButton(onClick = onCreateRace) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Criar prova"
@@ -44,22 +40,27 @@ fun RaceListScreen(
             }
         }
     ) { padding ->
-
-        if (races.isEmpty()) {
-
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (races.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
             ) {
                 Text(
-                    text = "Ainda não existem provas.",
+                    text = "Ainda não existem provas registadas.",
                     modifier = Modifier.padding(24.dp)
                 )
             }
-
         } else {
-
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -67,44 +68,28 @@ fun RaceListScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-
                 items(races) { race ->
-
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                onRaceClick(race.raceId)
+
+                                onRaceClick((race.firebaseId ?: race.raceId.toString()).ifBlank { "0" })
                             }
                     ) {
-
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-
+                        Column(modifier = Modifier.padding(16.dp)) {
                             Text(
                                 text = race.raceName,
                                 style = MaterialTheme.typography.titleLarge
                             )
-
-                            Spacer(
-                                modifier = Modifier.height(4.dp)
-                            )
-
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = race.raceType,
                                 style = MaterialTheme.typography.bodyMedium
                             )
-
                             if (race.raceDescription.isNotBlank()) {
-
-                                Spacer(
-                                    modifier = Modifier.height(8.dp)
-                                )
-
-                                Text(
-                                    text = race.raceDescription
-                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(text = race.raceDescription)
                             }
                         }
                     }

@@ -6,21 +6,93 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import pt.ipp.estg.moveon.data.local.entities.AthleteAlert
+import pt.ipp.estg.moveon.data.local.entities.RaceEntity
 import pt.ipp.estg.moveon.data.repository.RaceRepository
 
 class RaceViewModel(
     private val repository: RaceRepository
 ) : ViewModel() {
 
-    // --- LiveData para Alertas da Prova ---
+    // --- PROVAS (LIVEDATA) ---
+    private val _races = MutableLiveData<List<RaceEntity>>(emptyList())
+    val races: LiveData<List<RaceEntity>> = _races
+
+    private val _isLoading = MutableLiveData(false)
+    val isLoading: LiveData<Boolean> = _isLoading
+
+    // --- ALERTAS (CROWDSOURCING) ---
     private val _alertsLiveData = MutableLiveData<List<AthleteAlert>>(emptyList())
     val alertsLiveData: LiveData<List<AthleteAlert>> = _alertsLiveData
 
-    // --- LiveData de Feedback / Mensagens ---
     private val _statusMessage = MutableLiveData<String?>()
     val statusMessage: LiveData<String?> = _statusMessage
 
-    // Carregar e observar alertas em tempo real convertendo para LiveData
+    private val _isSubscribed = MutableLiveData(false)
+    val isSubscribed: LiveData<Boolean> = _isSubscribed
+
+    init {
+        loadRaces()
+    }
+
+    fun loadRaces() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                repository.getPublicRaces().collect { raceList ->
+                    _races.postValue(raceList)
+                    _isLoading.postValue(false)
+                }
+            } catch (e: Exception) {
+                _isLoading.postValue(false)
+            }
+        }
+    }
+
+    fun createRace(
+        race: RaceEntity,
+        onSuccess: () -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                repository.createRace(race)
+                _isLoading.postValue(false)
+                onSuccess()
+            } catch (e: Exception) {
+                _isLoading.postValue(false)
+                _statusMessage.postValue("Erro ao criar prova: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    // Sobrecarga para suportar chamadas com parâmetros soltos
+    fun createRace(
+        raceName: String,
+        raceDescription: String,
+        raceType: String,
+        raceDate: Long,
+        creatorEmail: String = "",
+        startLatitude: Double? = null,
+        startLongitude: Double? = null,
+        isPublic: Boolean = true,
+        onSuccess: () -> Unit = {}
+    ) {
+        createRace(
+            RaceEntity(
+                raceName = raceName,
+                raceDescription = raceDescription,
+                raceType = raceType,
+                raceDate = raceDate,
+                creatorEmail = creatorEmail,
+                startLatitude = startLatitude,
+                startLongitude = startLongitude,
+                isPublic = isPublic
+            ),
+
+            onSuccess
+        )
+    }
+
     fun loadAlerts(raceId: String) {
         viewModelScope.launch {
             repository.getAlertsForRace(raceId).collect { alerts ->
@@ -29,7 +101,6 @@ class RaceViewModel(
         }
     }
 
-    // Registar passagem com LiveData de retorno
     fun registerPassage(
         raceId: String,
         reporterId: String,
@@ -58,5 +129,36 @@ class RaceViewModel(
 
     fun clearStatusMessage() {
         _statusMessage.value = null
+    }
+
+
+    fun checkSubscriptionStatus(raceId: String, userId: String) {
+        viewModelScope.launch {
+            try {
+                val status = repository.isSubscribed(raceId, userId)
+                _isSubscribed.postValue(status)
+            } catch (e: Exception) {
+                _isSubscribed.postValue(false)
+            }
+        }
+    }
+
+    fun toggleSubscription(raceId: String, userId: String) {
+        viewModelScope.launch {
+            val currentStatus = _isSubscribed.value ?: false
+            try {
+                if (currentStatus) {
+                    repository.unsubscribeFromRace(raceId, userId)
+                    _isSubscribed.postValue(false)
+                    _statusMessage.postValue("Subscrição cancelada.")
+                } else {
+                    repository.subscribeToRace(raceId, userId)
+                    _isSubscribed.postValue(true)
+                    _statusMessage.postValue("Prova subscrita com sucesso!")
+                }
+            } catch (e: Exception) {
+                _statusMessage.postValue("Erro ao atualizar subscrição: ${e.localizedMessage}")
+            }
+        }
     }
 }

@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import pt.ipp.estg.moveon.ui.viewmodel.RaceViewModel
+import androidx.compose.runtime.livedata.observeAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +32,8 @@ fun CreateRaceScreen(
     var isPublic by remember {
         mutableStateOf(true)
     }
+
+    val isLoading by raceViewModel.isLoading.observeAsState(initial = false)
 
     Scaffold(
         topBar = {
@@ -144,10 +147,10 @@ fun CreateRaceScreen(
 
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !raceViewModel.isLoading
+                enabled = !isLoading
             ) {
 
-                if (raceViewModel.isLoading) {
+                if (isLoading) {
 
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp)

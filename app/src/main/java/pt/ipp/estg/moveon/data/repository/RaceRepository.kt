@@ -11,6 +11,7 @@ import kotlinx.coroutines.tasks.await
 import pt.ipp.estg.moveon.data.local.dao.RaceDao
 import pt.ipp.estg.moveon.data.local.entities.AthleteAlert
 import pt.ipp.estg.moveon.data.local.entities.RaceEntity
+import com.google.firebase.firestore.FieldValue
 
 class RaceRepository(
     private val raceDao: RaceDao
@@ -91,4 +92,52 @@ class RaceRepository(
         // Grava no Room (cache local)
         raceDao.insertAlert(alertWithId)
     }
+
+    suspend fun subscribeToRace(raceId: String, userId: String) {
+        val firestore = FirebaseFirestore.getInstance()
+
+        // Regista o utilizador na lista de subscritores da prova
+        firestore.collection("races")
+            .document(raceId)
+            .update("subscribers", FieldValue.arrayUnion(userId))
+            .await()
+
+        // Regista a prova na lista de subscrições do utilizador
+        firestore.collection("users")
+            .document(userId)
+            .collection("subscribed_races")
+            .document(raceId)
+            .set(mapOf("subscribedAt" to System.currentTimeMillis()))
+            .await()
+    }
+
+    suspend fun unsubscribeFromRace(raceId: String, userId: String) {
+        val firestore = FirebaseFirestore.getInstance()
+
+        firestore.collection("races")
+            .document(raceId)
+            .update("subscribers", FieldValue.arrayRemove(userId))
+            .await()
+
+        firestore.collection("users")
+            .document(userId)
+            .collection("subscribed_races")
+            .document(raceId)
+            .delete()
+            .await()
+    }
+
+    suspend fun isSubscribed(raceId: String, userId: String): Boolean {
+        val firestore = FirebaseFirestore.getInstance()
+        val doc = firestore.collection("users")
+            .document(userId)
+            .collection("subscribed_races")
+            .document(raceId)
+            .get()
+            .await()
+        return doc.exists()
+    }
+
+
+
 }

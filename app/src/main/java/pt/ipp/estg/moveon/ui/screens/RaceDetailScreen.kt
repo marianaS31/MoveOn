@@ -25,6 +25,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import pt.ipp.estg.moveon.data.local.AppDatabase
 import pt.ipp.estg.moveon.data.remote.RetrofitClient
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.runtime.livedata.observeAsState
+import pt.ipp.estg.moveon.ui.viewmodel.RaceViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +40,11 @@ fun RaceDetailScreen(
     val scope = rememberCoroutineScope()
     val db = remember { AppDatabase.getDatabase(context) }
 
+    // 1. Inicializar o ViewModel passando o repositório com o DAO:
+    val viewModel: RaceViewModel = remember {
+        RaceViewModel(pt.ipp.estg.moveon.data.repository.RaceRepository(db.raceDao()))
+    }
+
     var weatherInfo by remember { mutableStateOf("A carregar meteorologia...") }
     var showDialog by remember { mutableStateOf(false) }
 
@@ -46,6 +55,28 @@ fun RaceDetailScreen(
             LatLng(41.3680, -8.1920),
             LatLng(41.3700, -8.1900)
         )
+    }
+
+    // 2. Obter utilizador e observar os LiveData:
+    val currentUserId = remember { com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "" }
+    val isSubscribed by viewModel.isSubscribed.observeAsState(initial = false)
+    val alertsList by viewModel.alertsLiveData.observeAsState(initial = emptyList())
+    val statusMsg by viewModel.statusMessage.observeAsState()
+
+    // 3. Carregar estado de subscrição e alertas:
+    LaunchedEffect(raceId, currentUserId) {
+        if (currentUserId.isNotBlank()) {
+            viewModel.checkSubscriptionStatus(raceId, currentUserId)
+        }
+        viewModel.loadAlerts(raceId)
+    }
+
+    // 4. Mostrar feedback de mensagens (Toast):
+    LaunchedEffect(statusMsg) {
+        statusMsg?.let { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            viewModel.clearStatusMessage()
+        }
     }
 
     // Localização atual do observador
@@ -94,6 +125,23 @@ fun RaceDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            if (currentUserId.isNotBlank()) {
+                                viewModel.toggleSubscription(raceId, currentUserId)
+                            } else {
+                                Toast.makeText(context, "Inicia sessão para subscrever.", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (isSubscribed) Icons.Default.NotificationsActive else Icons.Default.NotificationsNone,
+                            contentDescription = if (isSubscribed) "Cancelar Subscrição" else "Subscrever Prova",
+                            tint = if (isSubscribed) MaterialTheme.colorScheme.primary else Color.Gray
+                        )
                     }
                 }
             )
