@@ -201,6 +201,7 @@ fun Dashboard(
                                             pt.ipp.estg.moveon.data.remote.RetrofitClient.weatherService.getCurrentWeather(
                                                 lat = lastPoint.latitude,
                                                 lon = lastPoint.longitude,
+                                                apiKey = "17fe9feb77de64dd0c1eaac23e1fc10e"
                                             )
                                         }
                                         temp = response.main.temp

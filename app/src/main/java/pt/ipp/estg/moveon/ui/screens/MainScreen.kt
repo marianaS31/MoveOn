@@ -21,10 +21,15 @@ import pt.ipp.estg.moveon.data.local.AppDatabase
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(onLogout: () -> Unit, onHistoryItemClick: (Long) -> Unit) {
+fun MainScreen(
+    onLogout: () -> Unit,
+    onHistoryItemClick: (Long) -> Unit,
+    onRacesClick: () -> Unit
+) {
 
     val context = LocalContext.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
     val scope = rememberCoroutineScope()
     val db = remember { AppDatabase.getDatabase(context) }
 
@@ -85,6 +90,17 @@ fun MainScreen(onLogout: () -> Unit, onHistoryItemClick: (Long) -> Unit) {
                     label = { Text("Rankings") },
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2; scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.DirectionsRun, null) },
+                    label = { Text("Provas") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onRacesClick()
+                    },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
                 Spacer(modifier = Modifier.weight(1f))

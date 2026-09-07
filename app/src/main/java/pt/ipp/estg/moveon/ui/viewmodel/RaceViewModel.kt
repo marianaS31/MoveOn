@@ -1,65 +1,62 @@
 package pt.ipp.estg.moveon.ui.viewmodel
 
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
-import pt.ipp.estg.moveon.data.local.entities.RaceEntity
+import pt.ipp.estg.moveon.data.local.entities.AthleteAlert
 import pt.ipp.estg.moveon.data.repository.RaceRepository
 
-class RaceViewModel : ViewModel() {
+class RaceViewModel(
+    private val repository: RaceRepository
+) : ViewModel() {
 
-    private val repository = RaceRepository()
+    // --- LiveData para Alertas da Prova ---
+    private val _alertsLiveData = MutableLiveData<List<AthleteAlert>>(emptyList())
+    val alertsLiveData: LiveData<List<AthleteAlert>> = _alertsLiveData
 
-    var isLoading = false
-        private set
+    // --- LiveData de Feedback / Mensagens ---
+    private val _statusMessage = MutableLiveData<String?>()
+    val statusMessage: LiveData<String?> = _statusMessage
 
-    var errorMessage: String? = null
-        private set
-
-    fun createRace(
-        raceName: String,
-        raceDescription: String,
-        raceType: String,
-        raceDate: Long,
-        startLatitude: Double?,
-        startLongitude: Double?,
-        isPublic: Boolean,
-        onSuccess: () -> Unit
-    ) {
-        val user = FirebaseAuth.getInstance().currentUser ?: return
-
+    // Carregar e observar alertas em tempo real convertendo para LiveData
+    fun loadAlerts(raceId: String) {
         viewModelScope.launch {
-
-            isLoading = true
-            errorMessage = null
-
-            try {
-
-                val race = RaceEntity(
-                    raceName = raceName,
-                    raceDescription = raceDescription,
-                    raceType = raceType,
-                    raceDate = raceDate,
-                    creatorEmail = user.email ?: "",
-                    startLatitude = startLatitude,
-                    startLongitude = startLongitude,
-                    isPublic = isPublic
-                )
-
-                repository.createRace(race)
-
-                onSuccess()
-
-            } catch (e: Exception) {
-
-                errorMessage = e.message
-
-            } finally {
-
-                isLoading = false
-
+            repository.getAlertsForRace(raceId).collect { alerts ->
+                _alertsLiveData.postValue(alerts)
             }
         }
+    }
+
+    // Registar passagem com LiveData de retorno
+    fun registerPassage(
+        raceId: String,
+        reporterId: String,
+        athleteNumber: Int,
+        latitude: Double,
+        longitude: Double
+    ) {
+        viewModelScope.launch {
+            try {
+                val alert = AthleteAlert(
+                    raceId = raceId,
+                    reporterId = reporterId,
+                    athleteNumber = athleteNumber,
+                    alertType = "PASSAGE",
+                    latitude = latitude,
+                    longitude = longitude,
+                    timestamp = System.currentTimeMillis()
+                )
+                repository.registerAthleteAlert(alert)
+                _statusMessage.postValue("Passagem do Atleta #$athleteNumber registada!")
+            } catch (e: Exception) {
+                _statusMessage.postValue("Erro ao registar alerta: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun clearStatusMessage() {
+        _statusMessage.value = null
     }
 }
