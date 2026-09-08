@@ -72,11 +72,11 @@ dependencies {
     implementation("com.google.android.gms:play-services-maps:18.2.0")
 
     //room
-    val room_version = "2.6.0"
-    implementation("androidx.room:room-runtime:$room_version")
-    implementation("androidx.room:room-ktx:$room_version")
-    annotationProcessor("androidx.room:room-compiler:$room_version")
-    ksp("androidx.room:room-compiler:$room_version")
+    val roomVersion = "2.6.0"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    annotationProcessor("androidx.room:room-compiler:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
 
     //firebase
     implementation(platform("com.google.firebase:firebase-bom:32.7.2"))
@@ -93,6 +93,8 @@ dependencies {
 
     //livedata
     implementation("androidx.compose.runtime:runtime-livedata:1.7.0")
+
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
 }
 

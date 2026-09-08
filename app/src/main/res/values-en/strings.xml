@@ -1,15 +1,46 @@
 <resources>
     <string name="app_name">MoveOn</string>
-    <string name="dashboard_title">Dashboard</string>
-    <string name="history_title">History</string>
-    <string name="ranking_title">Leaderboard</string>
-    <string name="start_recording">Record</string>
-    <string name="stop_recording">Stop</string>
+
+    <!-- Races / Navigation -->
+    <string name="races_title">Available Races</string>
+    <string name="tab_list">List</string>
+    <string name="tab_map">Map</string>
+    <string name="no_races">No races registered yet.</string>
+    <string name="create_race">Create Race</string>
+    <string name="race_name">Race name</string>
+    <string name="race_description">Description</string>
+    <string name="race_type">Race type</string>
+    <string name="public_race">Public race</string>
+    <string name="race_details_title">Race Details</string>
+
+    <!-- Sensors & Weather -->
+    <string name="ambient_light">Ambient Light: %1$d lx</string>
+    <string name="battery_level">Battery: %1$d%%</string>
+    <string name="eco_mode">(Eco)</string>
+    <string name="night_mode">(Night)</string>
+    <string name="weather_loading">Loading weather…</string>
+    <string name="weather_offline">Weather unavailable (Offline)</string>
+
+    <!-- GPS & Crowdsourcing -->
+    <string name="on_track">✓ On race track (Submissions active)</string>
+    <string name="off_track">⚠ Off race track (View only)</string>
+    <string name="register_passage">Register Passage</string>
+    <string name="observation_only">Observation Only</string>
+    <string name="athlete_bib">Athlete Bib Number</string>
+    <string name="confirm">Confirm</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Amateur Mode -->
+    <string name="amateur_mode_title">Amateur Challenge (Track Practice)</string>
+    <string name="start_timer">Start</string>
+    <string name="finish_timer">Finish</string>
+    <string name="anonymous_mode">Anonymous Mode?</string>
+    <string name="leaderboard_title">Track Leaderboard:</string>
+    <string name="no_leaderboard">No records registered yet.</string>
+    <string name="save_time">Save</string>
+    <string name="discard_time">Discard</string>
+
     <string name="walk">Walking</string>
     <string name="run">Running</string>
     <string name="bike">Cycling</string>
-    <string name="details_title">Activity Details</string>
-    <string name="distance_label">Distance</string>
-    <string name="duration_label">Duration</string>
-    <string name="speed_label">Speed</string>
 </resources>

@@ -1,5 +1,6 @@
 package pt.ipp.estg.moveon.data.repository
 
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
@@ -11,7 +12,7 @@ import kotlinx.coroutines.tasks.await
 import pt.ipp.estg.moveon.data.local.dao.RaceDao
 import pt.ipp.estg.moveon.data.local.entities.AthleteAlert
 import pt.ipp.estg.moveon.data.local.entities.RaceEntity
-import com.google.firebase.firestore.FieldValue
+import pt.ipp.estg.moveon.data.local.entities.Record
 
 class RaceRepository(
     private val raceDao: RaceDao
@@ -75,7 +76,10 @@ class RaceRepository(
         }
     }
 
-    fun getAlertsForRace(raceId: String) = raceDao.getAlertsForRace(raceId)
+    // Conversão de String para Long para cumprir a assinatura do RaceDao
+    fun getAlertsForRace(raceId: String): Flow<List<AthleteAlert>> {
+        return raceDao.getAlertsForRace(raceId)
+    }
 
     suspend fun registerAthleteAlert(alert: AthleteAlert) {
         val firestore = FirebaseFirestore.getInstance()
@@ -84,25 +88,21 @@ class RaceRepository(
             .collection("alerts")
             .document()
 
-        val alertWithId = alert.copy(id = docRef.id)
-
         // Grava no Firestore (online)
-        docRef.set(alertWithId).await()
+        docRef.set(alert).await()
 
         // Grava no Room (cache local)
-        raceDao.insertAlert(alertWithId)
+        raceDao.insertAlert(alert)
     }
 
     suspend fun subscribeToRace(raceId: String, userId: String) {
         val firestore = FirebaseFirestore.getInstance()
 
-        // Regista o utilizador na lista de subscritores da prova
         firestore.collection("races")
             .document(raceId)
             .update("subscribers", FieldValue.arrayUnion(userId))
             .await()
 
-        // Regista a prova na lista de subscrições do utilizador
         firestore.collection("users")
             .document(userId)
             .collection("subscribed_races")
@@ -138,6 +138,42 @@ class RaceRepository(
         return doc.exists()
     }
 
+    suspend fun saveAmateurTime(record: Record) {
+        val firestore = FirebaseFirestore.getInstance()
+        val docRef = firestore.collection("races")
+            .document(record.raceId)
+            .collection("leaderboard")
+            .document()
 
+        val recordWithId = record.copy(id = docRef.id)
+        docRef.set(recordWithId).await()
+    }
 
+    fun getLeaderboard(raceId: String): Flow<List<Record>> = callbackFlow {
+        val firestore = FirebaseFirestore.getInstance()
+        val subscription = firestore.collection("races")
+            .document(raceId)
+            .collection("leaderboard")
+            .orderBy("timeMillis", com.google.firebase.firestore.Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null) {
+                    val records = snapshot.documents.mapNotNull { it.toObject(Record::class.java) }
+                    trySend(records)
+                }
+            }
+        awaitClose { subscription.remove() }
+    }
+
+    suspend fun saveAlert(alert: AthleteAlert) {
+        // 1. Grava no Room local
+        raceDao.insertAlert(alert)
+
+        // 2. Grava no Firestore remoto
+        val firestore = FirebaseFirestore.getInstance()
+        firestore.collection("races")
+            .document(alert.raceId)
+            .collection("alerts")
+            .add(alert)
+            .await()
+    }
 }

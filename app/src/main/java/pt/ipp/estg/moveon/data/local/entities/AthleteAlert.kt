@@ -5,12 +5,14 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "athlete_alerts")
 data class AthleteAlert(
-    @PrimaryKey val id: String = "",
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
     val raceId: String = "",
-    val reporterId: String = "",
     val athleteNumber: Int = 0,
-    val alertType: String = "PASSAGE", // START, PASSAGE, FINISH
+    val reporterId: String = "",
+    val timestamp: Long = System.currentTimeMillis(),
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
-    val timestamp: Long = System.currentTimeMillis()
+    val alertType: String = "Passagem",
+    val photoUri: String? = null // Caminho da imagem local
 )

@@ -8,6 +8,8 @@ import kotlinx.coroutines.launch
 import pt.ipp.estg.moveon.data.local.entities.AthleteAlert
 import pt.ipp.estg.moveon.data.local.entities.RaceEntity
 import pt.ipp.estg.moveon.data.repository.RaceRepository
+import pt.ipp.estg.moveon.utils.SensorManagerHelper
+import pt.ipp.estg.moveon.data.local.entities.Record
 
 class RaceViewModel(
     private val repository: RaceRepository
@@ -29,6 +31,16 @@ class RaceViewModel(
 
     private val _isSubscribed = MutableLiveData(false)
     val isSubscribed: LiveData<Boolean> = _isSubscribed
+
+    private val _luxLevel = MutableLiveData<Float>(100f)
+    val luxLevel: LiveData<Float> = _luxLevel
+
+    private val _batteryLevel = MutableLiveData<Int>(100)
+    val batteryLevel: LiveData<Int> = _batteryLevel
+
+
+    private val _leaderboard = MutableLiveData<List<Record>>(emptyList())
+    val leaderboard: LiveData<List<Record>> = _leaderboard
 
     init {
         loadRaces()
@@ -102,27 +114,29 @@ class RaceViewModel(
     }
 
     fun registerPassage(
-        raceId: String,
-        reporterId: String,
-        athleteNumber: Int,
-        latitude: Double,
-        longitude: Double
+    raceId: String,
+    reporterId: String,
+    athleteNumber: Int,
+    latitude: Double,
+    longitude: Double,
+    photoUri: String? = null
     ) {
         viewModelScope.launch {
             try {
-                val alert = AthleteAlert(
+                val alert = pt.ipp.estg.moveon.data.local.entities.AthleteAlert(
                     raceId = raceId,
-                    reporterId = reporterId,
                     athleteNumber = athleteNumber,
-                    alertType = "PASSAGE",
+                    reporterId = reporterId,
+                    timestamp = System.currentTimeMillis(),
                     latitude = latitude,
                     longitude = longitude,
-                    timestamp = System.currentTimeMillis()
+                    alertType = "Passagem",
+                    photoUri = photoUri
                 )
-                repository.registerAthleteAlert(alert)
-                _statusMessage.postValue("Passagem do Atleta #$athleteNumber registada!")
+                repository.saveAlert(alert)
+                _statusMessage.postValue("Passagem do Atleta #$athleteNumber registada com sucesso!")
             } catch (e: Exception) {
-                _statusMessage.postValue("Erro ao registar alerta: ${e.localizedMessage}")
+                _statusMessage.postValue("Erro ao registar passagem: ${e.localizedMessage}")
             }
         }
     }
@@ -161,4 +175,52 @@ class RaceViewModel(
             }
         }
     }
+
+    fun startSensors(sensorHelper: SensorManagerHelper) {
+        viewModelScope.launch {
+            sensorHelper.getAmbientLightFlow().collect { lux ->
+                _luxLevel.postValue(lux)
+            }
+        }
+        viewModelScope.launch {
+            sensorHelper.getBatteryLevelFlow().collect { battery ->
+                _batteryLevel.postValue(battery)
+            }
+        }
+    }
+
+    fun loadLeaderboard(raceId: String) {
+        viewModelScope.launch {
+            repository.getLeaderboard(raceId).collect { records ->
+                _leaderboard.postValue(records)
+            }
+        }
+    }
+
+    fun submitAmateurTime(
+        raceId: String,
+        userId: String,
+        username: String,
+        isAnonymous: Boolean,
+        elapsedMillis: Long
+    ) {
+        viewModelScope.launch {
+            try {
+                val record = Record(
+                    raceId = raceId,
+                    userId = userId,
+                    displayName = if (isAnonymous) "Atleta Anónimo" else username.ifBlank { "Utilizador MoveOn" },
+                    timeMillis = elapsedMillis,
+                    completedAt = System.currentTimeMillis()
+                )
+                repository.saveAmateurTime(record)
+                _statusMessage.postValue("Tempo de prova registado com sucesso!")
+            } catch (e: Exception) {
+                _statusMessage.postValue("Erro ao guardar tempo: ${e.localizedMessage}")
+            }
+        }
+    }
+
+
+
 }

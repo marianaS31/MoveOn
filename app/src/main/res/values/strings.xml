@@ -1,15 +1,46 @@
 <resources>
     <string name="app_name">MoveOn</string>
-    <string name="dashboard_title">Dashboard</string>
-    <string name="history_title">Histórico</string>
-    <string name="ranking_title">Classificação</string>
-    <string name="start_recording">Gravar</string>
-    <string name="stop_recording">Parar</string>
+
+    <!-- Provas / Navegação -->
+    <string name="races_title">Provas Disponíveis</string>
+    <string name="tab_list">Lista</string>
+    <string name="tab_map">Mapa</string>
+    <string name="no_races">Ainda não existem provas registadas.</string>
+    <string name="create_race">Criar Prova</string>
+    <string name="race_name">Nome da prova</string>
+    <string name="race_description">Descrição</string>
+    <string name="race_type">Tipo de prova</string>
+    <string name="public_race">Prova pública</string>
+    <string name="race_details_title">Detalhes da Prova</string>
+
+    <!-- Sensores & Clima -->
+    <string name="ambient_light">Luz Ambiente: %1$d lx</string>
+    <string name="battery_level">Bateria: %1$d%%</string>
+    <string name="eco_mode">(Eco)</string>
+    <string name="night_mode">(Noturno)</string>
+    <string name="weather_loading">A carregar meteorologia…</string>
+    <string name="weather_offline">Meteorologia indisponível (Offline)</string>
+
+    <!-- Validações GPS & Crowdsourcing -->
+    <string name="on_track">✓ No percurso da prova (Submissões ativas)</string>
+    <string name="off_track">⚠ Fora do percurso (Apenas consulta)</string>
+    <string name="register_passage">Registar Passagem</string>
+    <string name="observation_only">Apenas Observação</string>
+    <string name="athlete_bib">Dorsal do Atleta</string>
+    <string name="confirm">Confirmar</string>
+    <string name="cancel">Cancelar</string>
+
+    <!-- Modo Amador -->
+    <string name="amateur_mode_title">Desafio Amador (Treino no Percurso)</string>
+    <string name="start_timer">Iniciar</string>
+    <string name="finish_timer">Concluir</string>
+    <string name="anonymous_mode">Modo Anónimo?</string>
+    <string name="leaderboard_title">Leaderboard do Percurso:</string>
+    <string name="no_leaderboard">Nenhum tempo registado ainda.</string>
+    <string name="save_time">Gravar</string>
+    <string name="discard_time">Descartar</string>
+
     <string name="walk">Caminhada</string>
     <string name="run">Corrida</string>
     <string name="bike">Ciclismo</string>
-    <string name="details_title">Detalhes da Atividade</string>
-    <string name="distance_label">Distância</string>
-    <string name="duration_label">Duração</string>
-    <string name="speed_label">Velocidade</string>
 </resources>
