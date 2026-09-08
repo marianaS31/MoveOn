@@ -53,6 +53,10 @@ import pt.ipp.estg.moveon.R
 import pt.ipp.estg.moveon.data.local.AppDatabase
 import pt.ipp.estg.moveon.data.remote.RetrofitClient
 import pt.ipp.estg.moveon.ui.viewmodel.RaceViewModel
+import java.io.File
+import java.io.FileOutputStream
+import android.graphics.BitmapFactory
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,12 +77,31 @@ fun RaceDetailScreen(
     var showDialog by remember { mutableStateOf(false) }
 
     // Rota da prova (exemplo ESTG - P.Porto)
-    val raceRoute = remember {
-        listOf(
-            LatLng(41.3667, -8.1944),
-            LatLng(41.3680, -8.1920),
-            LatLng(41.3700, -8.1900)
-        )
+    val currentRace by viewModel.races.observeAsState(initial = emptyList())
+    val selectedRace = remember(currentRace, raceId) {
+        currentRace.firstOrNull { it.firebaseId == raceId || it.raceId.toString() == raceId }
+    }
+
+    val raceRoute = remember(selectedRace) {
+        val coords = selectedRace?.routeCoordinates
+        if (!coords.isNullOrBlank()) {
+            coords.split(";").mapNotNull { pair ->
+                val parts = pair.split(",")
+                if (parts.size == 2) {
+                    val lat = parts[0].toDoubleOrNull()
+                    val lng = parts[1].toDoubleOrNull()
+                    if (lat != null && lng != null) LatLng(lat, lng) else null
+                } else null
+            }
+        } else if (selectedRace?.startLatitude != null && selectedRace?.startLongitude != null) {
+            listOf(LatLng(selectedRace!!.startLatitude!!, selectedRace!!.startLongitude!!))
+        } else {
+            listOf(
+                LatLng(41.3667, -8.1944),
+                LatLng(41.3680, -8.1920),
+                LatLng(41.3700, -8.1900)
+            )
+        }
     }
 
     val currentUserId = remember { com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "" }
@@ -187,7 +210,7 @@ fun RaceDetailScreen(
                 RetrofitClient.weatherService.getCurrentWeather(
                     lat = startPoint.latitude,
                     lon = startPoint.longitude,
-                    apiKey = "COLOQUE_AQUI_A_SUA_API_KEY"
+                    apiKey = "17fe9feb77de64dd0c1eaac23e1fc10e"
                 )
             }
             weatherInfo = "${weather.main.temp}°C | ${weather.weather.firstOrNull()?.description ?: "Céu limpo"}"
@@ -590,13 +613,17 @@ fun RaceDetailScreen(
                     onClick = {
                         val num = athleteNumberText.toIntOrNull()
                         if (num != null) {
+                            val localPath = selectedImageUri?.let { uri ->
+                                saveImageLocally(context, uri)
+                            }
+
                             viewModel.registerPassage(
                                 raceId = raceId,
                                 reporterId = currentUserId,
                                 athleteNumber = num,
                                 latitude = currentUserLocation.latitude,
                                 longitude = currentUserLocation.longitude,
-                                photoUri = selectedImageUri?.toString()
+                                photoUri = localPath
                             )
                             showDialog = false
                         }
@@ -622,14 +649,19 @@ fun LocalUriImage(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val uri = remember(uriString) { Uri.parse(uriString) }
-    val bitmap = remember(uri) {
+    val bitmap = remember(uriString) {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri))
+            val file = File(uriString)
+            if (file.exists()) {
+                BitmapFactory.decodeFile(file.absolutePath)
             } else {
-                @Suppress("DEPRECATION")
-                MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                val uri = Uri.parse(uriString)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri))
+                } else {
+                    @Suppress("DEPRECATION")
+                    MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                }
             }
         } catch (e: Exception) {
             null
@@ -662,5 +694,25 @@ fun shareRaceBySms(context: Context, raceName: String, weatherInfo: String) {
             putExtra(Intent.EXTRA_TEXT, message)
         }
         context.startActivity(Intent.createChooser(shareIntent, "Partilhar Prova"))
+    }
+}
+
+
+fun saveImageLocally(context: Context, sourceUri: Uri): String? {
+    return try {
+        val inputStream = context.contentResolver.openInputStream(sourceUri) ?: return null
+        val fileName = "alert_${System.currentTimeMillis()}.jpg"
+        val destinationFile = File(context.filesDir, fileName)
+        val outputStream = FileOutputStream(destinationFile)
+
+        inputStream.use { input ->
+            outputStream.use { output ->
+                input.copyTo(output)
+            }
+        }
+        destinationFile.absolutePath
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 }

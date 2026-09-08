@@ -13,9 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
@@ -23,15 +23,22 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import pt.ipp.estg.moveon.R
+import pt.ipp.estg.moveon.data.local.AppDatabase
+import pt.ipp.estg.moveon.data.repository.RaceRepository
 import pt.ipp.estg.moveon.ui.viewmodel.RaceViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RaceListScreen(
     onCreateRace: () -> Unit,
-    onRaceClick: (String) -> Unit,
-    raceViewModel: RaceViewModel = viewModel()
+    onRaceClick: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val db = remember { AppDatabase.getDatabase(context) }
+    val raceViewModel: RaceViewModel = remember {
+        RaceViewModel(RaceRepository(db.raceDao()))
+    }
+
     val races by raceViewModel.races.observeAsState(initial = emptyList())
     val isLoading by raceViewModel.isLoading.observeAsState(initial = false)
 

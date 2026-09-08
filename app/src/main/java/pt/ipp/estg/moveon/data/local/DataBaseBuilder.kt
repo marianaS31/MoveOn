@@ -12,7 +12,7 @@ import pt.ipp.estg.moveon.data.local.entities.ActivityEntity
 import pt.ipp.estg.moveon.data.local.entities.RaceEntity
 import pt.ipp.estg.moveon.data.local.entities.AthleteAlert
 
-@Database(entities = [ActivityEntity::class, LocationPointEntity::class, RaceEntity::class, AthleteAlert::class], version = 3, exportSchema = false)
+@Database(entities = [ActivityEntity::class, LocationPointEntity::class, RaceEntity::class, AthleteAlert::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun activityDao(): ActivityDao

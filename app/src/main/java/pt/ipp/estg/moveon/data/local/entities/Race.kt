@@ -15,5 +15,6 @@ data class RaceEntity(
     val startLatitude: Double? = null,
     val startLongitude: Double? = null,
     val isPublic: Boolean = true,
-    val firebaseId: String? = null
+    val firebaseId: String? = null,
+    val routeCoordinates: String? = null // Ex: "41.3667,-8.1944;41.3680,-8.1920;41.3700,-8.1900"
 )

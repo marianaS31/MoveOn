@@ -30,10 +30,17 @@ class RaceRepository(
             "creatorEmail" to race.creatorEmail,
             "startLatitude" to race.startLatitude,
             "startLongitude" to race.startLongitude,
-            "isPublic" to race.isPublic
+            "isPublic" to race.isPublic,
+            "routeCoordinates" to race.routeCoordinates
         )
 
+        // 1. Grava no Firebase Firestore (remoto)[cite: 1]
         val document = racesCollection.add(raceData).await()
+
+        // 2. Grava no Room (cache local)[cite: 1]
+        val localRace = race.copy(firebaseId = document.id)
+        raceDao.insertRace(localRace)
+
         return document.id
     }
 
@@ -61,7 +68,8 @@ class RaceRepository(
                                 startLatitude = document.getDouble("startLatitude"),
                                 startLongitude = document.getDouble("startLongitude"),
                                 isPublic = document.getBoolean("isPublic") ?: true,
-                                firebaseId = document.id
+                                firebaseId = document.id,
+                                routeCoordinates = document.getString("routeCoordinates")
                             )
                         } catch (e: Exception) {
                             null
@@ -76,7 +84,6 @@ class RaceRepository(
         }
     }
 
-    // Conversão de String para Long para cumprir a assinatura do RaceDao
     fun getAlertsForRace(raceId: String): Flow<List<AthleteAlert>> {
         return raceDao.getAlertsForRace(raceId)
     }
@@ -88,10 +95,10 @@ class RaceRepository(
             .collection("alerts")
             .document()
 
-        // Grava no Firestore (online)
+        // Grava no Firestore (online)[cite: 1]
         docRef.set(alert).await()
 
-        // Grava no Room (cache local)
+        // Grava no Room (cache local)[cite: 1]
         raceDao.insertAlert(alert)
     }
 
@@ -165,10 +172,10 @@ class RaceRepository(
     }
 
     suspend fun saveAlert(alert: AthleteAlert) {
-        // 1. Grava no Room local
+        // 1. Grava no Room local[cite: 1]
         raceDao.insertAlert(alert)
 
-        // 2. Grava no Firestore remoto
+        // 2. Grava no Firestore remoto[cite: 1]
         val firestore = FirebaseFirestore.getInstance()
         firestore.collection("races")
             .document(alert.raceId)

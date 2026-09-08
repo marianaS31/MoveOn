@@ -303,7 +303,7 @@ fun LightSensorMonitor(onLuxChanged: (Float) -> Unit) {
     }
 }
 
-// --- FUNÇÕES AUXILIARES MANTIDAS (IGUAIS) ---
+// --- FUNÇÕES AUXILIARES MANTIDAS  ---
 
 fun startRecording(context: Context, scope: CoroutineScope, db: AppDatabase, activityType: String, onSuccess: (Long) -> Unit) {
     scope.launch {
